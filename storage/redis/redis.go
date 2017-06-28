@@ -9,15 +9,19 @@ import (
 )
 
 // Register 注册当前驱动到Storage
-func Register(options *redis.Options) {
-	storage.Register("redis", &Storage{
-		client: redis.NewClient(options),
+func Register(driverName string, options *redis.Options) {
+	storage.Register(driverName, &Storage{
+		client:     redis.NewClient(options),
+		options:    options,
+		driverName: driverName,
 	})
 }
 
 // Storage 使用Redis为存储引擎
 type Storage struct {
-	client *redis.Client
+	driverName string
+	options    *redis.Options
+	client     *redis.Client
 }
 
 // Set 方法用于在Redis中创建一个hash与url的对应关系

@@ -14,6 +14,7 @@ type Driver interface {
 }
 
 var drivers = make(map[string]Driver)
+var defaultDriverName string
 var driversMu sync.RWMutex
 
 // Register 注册一个存储驱动
@@ -30,6 +31,10 @@ func Register(name string, driver Driver) {
 	}
 
 	drivers[name] = driver
+
+	if defaultDriverName == "" {
+		defaultDriverName = name
+	}
 }
 
 func unregisterAllDrivers() {
@@ -65,9 +70,6 @@ func Open(driverName string) (Driver, error) {
 
 // Default 返回第一个注册的驱动
 func Default() Driver {
-	for _, driver := range drivers {
-		return driver
-	}
-
-	return nil
+	driver, _ := Open(defaultDriverName)
+	return driver
 }
