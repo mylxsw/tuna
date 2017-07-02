@@ -3,6 +3,7 @@ package handler
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/mylxsw/tuna/libs"
 	"github.com/mylxsw/tuna/storage"
 )
+
+var r = rand.New(rand.NewSource(9999999))
 
 type respForCreate struct {
 	Link   string `json:"link"`
@@ -22,12 +25,10 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	url := r.PostFormValue("url")
 	expire, _ := strconv.Atoi(r.PostFormValue("expire"))
 
-	digest := md5.New()
-	digest.Write([]byte(url + time.Now().Format("Mon Jan 2 15:04:05 MST 2006")))
-	urlHash := hex.EncodeToString(digest.Sum(nil))
-
 	if driver := storage.Default(); driver != nil {
-		i := 8
+		urlHash := genURLHash(url, true)
+
+		i := 6
 		link := urlHash[:i]
 		for driver.Get(link) != "" {
 			if i >= 32 {
@@ -49,4 +50,23 @@ func Create(w http.ResponseWriter, r *http.Request) {
 
 ERR:
 	w.Write(libs.Failed("操作失败"))
+}
+
+// 生成URL哈希值
+func genURLHash(url string, unique bool) string {
+	salt := ""
+	if unique {
+		salt = genSalt()
+	}
+
+	digest := md5.New()
+	digest.Write([]byte(url + salt))
+	urlHash := hex.EncodeToString(digest.Sum(nil))
+
+	return urlHash
+}
+
+// 生成一个随机值
+func genSalt() string {
+	return time.Now().Format("Mon Jan 2 15:04:05 MST 2006") + strconv.Itoa(r.Int())
 }

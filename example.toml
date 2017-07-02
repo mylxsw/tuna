@@ -1,7 +1,10 @@
 
+# 存储方案
 storage_driver="redis"
+# http监听地址
 listen="127.0.0.1:55555"
-daemon=true
+# 是否开启守护进程模式
+daemon=false
 
 [storage.redis]
 
