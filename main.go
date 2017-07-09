@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,6 +16,7 @@ import (
 	mw "github.com/mylxsw/tuna/middleware"
 	dbStorage "github.com/mylxsw/tuna/storage/database"
 	redisStorage "github.com/mylxsw/tuna/storage/redis"
+	log "github.com/sirupsen/logrus"
 	redis "gopkg.in/redis.v5"
 )
 
@@ -27,6 +28,9 @@ type Conf struct {
 	StorageDrivers    map[string]StorageDriverConf `toml:"storage"`
 	ListenAddr        string                       `toml:"listen"`
 	Daemon            bool                         `toml:"daemon"`
+	LogLevel          string                       `toml:"log_level"`
+	LogType           string                       `toml:"log_type"`
+	LogFile           string                       `toml:"log_file"`
 }
 
 // StorageDriverConf 是每个存储驱动的配置
@@ -44,12 +48,13 @@ func daemonMode() {
 		fmt.Println("failed to lookup binary:", err)
 		os.Exit(2)
 	}
-	_, err = os.StartProcess(binary, os.Args, &os.ProcAttr{Dir: "", Env: nil, Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, Sys: nil})
+	process, err := os.StartProcess(binary, os.Args, &os.ProcAttr{Dir: "", Env: nil, Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, Sys: nil})
 	if err != nil {
 		fmt.Println("failed to start process:", err)
 		os.Exit(2)
 	}
 
+	log.Debugf("start daemon process, pid=%d", process.Pid)
 	os.Exit(0)
 }
 
@@ -76,7 +81,7 @@ func initStorageDriver(config Conf) {
 		redisConf := config.StorageDrivers["redis"]
 		redisDB, err := strconv.Atoi(redisConf.DBName)
 		if err != nil {
-			log.Fatalf("redis配置错误，dbname必须为数字: %v", err)
+			panic(fmt.Sprintf("redis配置错误，dbname必须为数字: %v", err))
 		}
 		// 注册Redis驱动
 		redisStorage.Register("redis", &redis.Options{
@@ -90,6 +95,9 @@ func initStorageDriver(config Conf) {
 }
 
 func startHTTPServer(ctx context.Context, config Conf, handler http.Handler) {
+	defer func() {
+		log.Debug("http server stopped")
+	}()
 	srv := &http.Server{
 		Addr:    config.ListenAddr,
 		Handler: handler,
@@ -103,12 +111,23 @@ func startHTTPServer(ctx context.Context, config Conf, handler http.Handler) {
 		}
 	}()
 
+	log.Debugf("start http server, listen http://%s", config.ListenAddr)
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("ERROR: %v", err)
+		panic(err)
 	}
 }
 
+func init() {
+	log.SetLevel(log.DebugLevel)
+}
+
 func main() {
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warningf("server closed because %s", r)
+		}
+	}()
 
 	flag.Usage = func() {
 		fmt.Print("Options:\n\n")
@@ -121,12 +140,22 @@ func main() {
 	// 解析配置文件
 	var config Conf
 	if _, err := toml.DecodeFile(configFilePath, &config); err != nil {
-		log.Fatalf("parse configration file failed: %v", err)
+		panic(fmt.Sprintf("parse configration file failed: %v", err))
 	}
 
 	// 守护进程模式
 	if config.Daemon && os.Getppid() != 1 {
 		daemonMode()
+	}
+
+	// 配置日志处理
+	if config.LogLevel != "" {
+		level, err := log.ParseLevel(config.LogLevel)
+		if err != nil {
+			panic(err)
+		}
+
+		log.SetLevel(level)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -138,9 +167,54 @@ func main() {
 	// 注册路由规则
 	r := mux.NewRouter()
 
-	r.HandleFunc("/", mw.Handler(handler.Welcome, mw.WithHTMLResponse)).Methods("GET")
-	r.HandleFunc("/", mw.Handler(handler.Create, mw.WithJSONResponse)).Methods("POST")
-	r.HandleFunc("/{hash}", mw.Handler(handler.Query, mw.WithHTMLResponse)).Methods("GET")
+	type RouteHandler struct {
+		Path        string
+		HandlerFunc http.HandlerFunc
+		Methods     []string
+	}
+
+	var routeHandlers = []RouteHandler{
+		RouteHandler{
+			Path:        "/",
+			HandlerFunc: mw.Handler(handler.Welcome, mw.WithHTMLResponse),
+			Methods:     []string{"GET"},
+		},
+		RouteHandler{
+			Path:        "/",
+			HandlerFunc: mw.Handler(handler.Create, mw.WithJSONResponse),
+			Methods:     []string{"POST"},
+		},
+		RouteHandler{
+			Path:        "/{hash}",
+			HandlerFunc: mw.Handler(handler.Query, mw.WithHTMLResponse),
+			Methods:     []string{"GET"},
+		},
+	}
+
+	for _, handler := range routeHandlers {
+		r.HandleFunc(handler.Path, handler.HandlerFunc).Methods(handler.Methods...)
+	}
+
+	// 用于获取所有的API
+	r.HandleFunc("/probe/routes", mw.Handler(func(w http.ResponseWriter, r *http.Request) {
+		results := make(map[string]map[string]map[string]string)
+		results["v1"] = make(map[string]map[string]string)
+
+		for _, handler := range routeHandlers {
+			if _, ok := results["v1"][handler.Path]; !ok {
+				results["v1"][handler.Path] = make(map[string]string)
+			}
+
+			for _, method := range handler.Methods {
+				results["v1"][handler.Path][method] = ""
+			}
+		}
+
+		results["v1"]["/probe/routes"] = map[string]string{"GET": ""}
+
+		jsonRes, _ := json.Marshal(results)
+		w.Write(jsonRes)
+	}, mw.WithJSONResponse)).Methods("GET")
 
 	// 创建 http server
 	startHTTPServer(ctx, config, r)

@@ -10,28 +10,33 @@ import (
 
 	"github.com/mylxsw/tuna/libs"
 	"github.com/mylxsw/tuna/storage"
+	log "github.com/sirupsen/logrus"
 )
 
 var r = rand.New(rand.NewSource(9999999))
 
 type respForCreate struct {
 	Link   string `json:"link"`
-	Expire int    `json:"expire"`
+	Expire int64  `json:"expire"`
 }
 
 // Create 函数用于创建一个hash与url的对应关系
 func Create(w http.ResponseWriter, r *http.Request) {
 
 	url := r.PostFormValue("url")
-	expire, _ := strconv.Atoi(r.PostFormValue("expire"))
+	expire, _ := strconv.ParseInt(r.PostFormValue("expire"), 10, 64)
 
+	link := ""
 	if driver := storage.Default(); driver != nil {
 		urlHash := genURLHash(url, true)
 
 		i := 6
-		link := urlHash[:i]
+		link = urlHash[:i]
 		for driver.Get(link) != "" {
+			log.Warningf("hash collision detected [%s] for %s", link, url)
+
 			if i >= 32 {
+				log.Warningf("oops, url [%s] has the same hash %s with someothers", url, link)
 				goto ERR
 			}
 			i++
@@ -39,6 +44,8 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		}
 
 		driver.Set(link, url, expire)
+
+		log.Debugf("create new link %s for %s expired at ", link, url, expire)
 
 		w.Write(libs.Success(respForCreate{
 			Link:   link,

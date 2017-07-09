@@ -6,6 +6,13 @@ listen="127.0.0.1:55555"
 # 是否开启守护进程模式
 daemon=false
 
+# 日志输出级别:debug/info/warning/error/fatal/panic
+log_level="debug"
+# 日志输出类型: stdout/file
+log_type="stdout"
+# 日志文件，仅当log_type=file时有效
+log_file="/var/log/tuna.log"
+
 [storage.redis]
 
 host="127.0.0.1"

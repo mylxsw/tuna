@@ -3,9 +3,10 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"time"
 
 	"github.com/mylxsw/tuna/storage"
+	log "github.com/sirupsen/logrus"
 )
 
 // Register 注册当前驱动到Storage
@@ -30,7 +31,13 @@ type Storage struct {
 }
 
 // Set 方法用于在MySQL中创建一个hash与url的对应关系
-func (s *Storage) Set(hash, url string, expire int) (string, error) {
+func (s *Storage) Set(hash, url string, expire int64) (string, error) {
+
+	if expire > 0 {
+		// 过期时间设置为“当前时间戳+过期时间”
+		expire = time.Now().Unix() + expire
+	}
+
 	stmt, err := s.db.Prepare("INSERT INTO tuna_urls (hash, url, expire) VALUES(?, ?, ?)")
 	if err != nil {
 		return "", fmt.Errorf("Prepare Error: %v", err)
@@ -48,11 +55,11 @@ func (s *Storage) Set(hash, url string, expire int) (string, error) {
 // Get 方法用于在MySQL中查询hash与url的对应关系
 func (s *Storage) Get(hash string) string {
 	var url string
-	err := s.db.QueryRow("SELECT url FROM tuna_urls WHERE hash=? LIMIT 1", hash).Scan(&url)
+	err := s.db.QueryRow("SELECT url FROM tuna_urls WHERE hash=? AND expire >= ? LIMIT 1", hash, time.Now().Unix()).Scan(&url)
 	switch {
 	case err == sql.ErrNoRows:
 	case err != nil:
-		log.Printf("Error: %s", err)
+		log.Warning("%s", err)
 	default:
 		return url
 	}
@@ -63,9 +70,9 @@ func (s *Storage) Get(hash string) string {
 // Count 获取当前有多少url
 func (s *Storage) Count() int {
 	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM tuna_urls").Scan(&count)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM tuna_urls WHERE expire >= ?", time.Now().Unix()).Scan(&count)
 	if err != nil {
-		log.Printf("Error: %s", err)
+		log.Warning("%s", err)
 
 		return 0
 	}

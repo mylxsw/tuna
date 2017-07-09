@@ -8,7 +8,7 @@ import (
 
 // Driver 是所有底层存储方式的基础
 type Driver interface {
-	Set(hash, url string, expire int) (string, error)
+	Set(hash, url string, expire int64) (string, error)
 	Get(hash string) string
 	Count() int
 }

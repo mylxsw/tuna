@@ -25,7 +25,7 @@ type Storage struct {
 }
 
 // Set 方法用于在Redis中创建一个hash与url的对应关系
-func (s *Storage) Set(hash, url string, expire int) (string, error) {
+func (s *Storage) Set(hash, url string, expire int64) (string, error) {
 	return s.client.Set(getKey(hash), url, time.Duration(expire)*time.Second).Result()
 }
 
