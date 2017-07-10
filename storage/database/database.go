@@ -70,7 +70,7 @@ func (s *Storage) Get(hash string) string {
 // Count 获取当前有多少url
 func (s *Storage) Count() int {
 	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM tuna_urls WHERE expire >= ?", time.Now().Unix()).Scan(&count)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM tuna_urls WHERE expire >= ? or expire = 0", time.Now().Unix()).Scan(&count)
 	if err != nil {
 		log.Warning("%s", err)
 

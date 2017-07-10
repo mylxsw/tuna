@@ -1,6 +1,6 @@
 
 # 存储方案
-storage_driver="redis"
+storage_driver="mysql"
 # http监听地址
 listen="127.0.0.1:55555"
 # 是否开启守护进程模式
@@ -23,7 +23,7 @@ dbname="0"
 [storage.mysql]
 
 username="root"
-password="root"
+password=""
 dbname="tuna"
 host="127.0.0.1"
 port=3306

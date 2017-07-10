@@ -38,7 +38,6 @@ func Failed(message string) []byte {
 // SendJSONResponseHeader 发送一个JSON的响应
 func SendJSONResponseHeader(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
 }
 
 // Redirect 用于302跳转
@@ -51,4 +50,13 @@ func Redirect(url string, w http.ResponseWriter) {
 func SendNotFoundResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNotFound)
 	w.Write([]byte("Not Found!"))
+}
+
+// SendFormInvalidResponse 发送表单不合法响应
+func SendFormInvalidResponse(w http.ResponseWriter, message string) {
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	w.Write(createResponse(Response{
+		StatusCode: 422,
+		Message:    message,
+	}))
 }

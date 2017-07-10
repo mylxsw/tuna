@@ -13,6 +13,11 @@ import (
 func Query(w http.ResponseWriter, r *http.Request) {
 	hash := mux.Vars(r)["hash"]
 
+	if !libs.IsValidHash(hash) {
+		libs.SendFormInvalidResponse(w, "请求地址不合法")
+		return
+	}
+
 	if driver := storage.Default(); driver != nil {
 		url := driver.Get(hash)
 		if url == "" {

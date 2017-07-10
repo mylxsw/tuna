@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"fmt"
+
 	"github.com/mylxsw/tuna/libs"
 	"github.com/mylxsw/tuna/storage"
 	log "github.com/sirupsen/logrus"
@@ -22,9 +24,24 @@ type respForCreate struct {
 
 // Create 函数用于创建一个hash与url的对应关系
 func Create(w http.ResponseWriter, r *http.Request) {
+	// 默认有效时间为15天
+	var expire int64 = 3600 * 24 * 15
+	var err error
 
 	url := r.PostFormValue("url")
-	expire, _ := strconv.ParseInt(r.PostFormValue("expire"), 10, 64)
+	expireStr := r.PostFormValue("expire")
+	if expireStr != "" {
+		expire, err = strconv.ParseInt(expireStr, 10, 64)
+		if err != nil {
+			libs.SendFormInvalidResponse(w, fmt.Sprintf("expire过期时间不合法: %v", err))
+			return
+		}
+	}
+
+	if !libs.IsValidURL(url) {
+		libs.SendFormInvalidResponse(w, "url地址不合法")
+		return
+	}
 
 	link := ""
 	if driver := storage.Default(); driver != nil {
@@ -45,7 +62,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 
 		driver.Set(link, url, expire)
 
-		log.Debugf("create new link %s for %s expired at ", link, url, expire)
+		log.Debugf("create new link %s for %s expired at %d", link, url, expire)
 
 		w.Write(libs.Success(respForCreate{
 			Link:   link,
