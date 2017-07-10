@@ -158,6 +158,15 @@ func main() {
 		log.SetLevel(level)
 	}
 
+	if config.LogType == "file" && config.LogFile != "" {
+		f, err := os.OpenFile(config.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755)
+		if err != nil {
+			panic(err)
+		}
+
+		log.SetOutput(f)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	signalHandler(cancel)
 

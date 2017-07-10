@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func signalHandler(cancel context.CancelFunc) {
