@@ -10,6 +10,7 @@ import (
 
 	"fmt"
 
+	"github.com/mylxsw/tuna/conf"
 	"github.com/mylxsw/tuna/libs"
 	"github.com/mylxsw/tuna/storage"
 	log "github.com/sirupsen/logrus"
@@ -64,8 +65,9 @@ func Create(w http.ResponseWriter, r *http.Request) {
 
 		log.Debugf("create new link %s for %s expired at %d", link, url, expire)
 
+		conf := conf.GetConf()
 		w.Write(libs.Success(respForCreate{
-			Link:   link,
+			Link:   fmt.Sprintf("%s/%s", conf.PublicURL, link),
 			Expire: expire,
 		}))
 

@@ -10,8 +10,8 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/BurntSushi/toml"
 	"github.com/gorilla/mux"
+	"github.com/mylxsw/tuna/conf"
 	"github.com/mylxsw/tuna/handler"
 	mw "github.com/mylxsw/tuna/middleware"
 	dbStorage "github.com/mylxsw/tuna/storage/database"
@@ -21,26 +21,6 @@ import (
 )
 
 var configFilePath string
-
-// Conf 是配置对象
-type Conf struct {
-	StorageDriverName string                       `toml:"storage_driver"`
-	StorageDrivers    map[string]StorageDriverConf `toml:"storage"`
-	ListenAddr        string                       `toml:"listen"`
-	Daemon            bool                         `toml:"daemon"`
-	LogLevel          string                       `toml:"log_level"`
-	LogType           string                       `toml:"log_type"`
-	LogFile           string                       `toml:"log_file"`
-}
-
-// StorageDriverConf 是每个存储驱动的配置
-type StorageDriverConf struct {
-	Host     string `toml:"host"`
-	Username string `toml:"username"`
-	Password string `toml:"password"`
-	Port     int    `toml:"port"`
-	DBName   string `toml:"dbname"`
-}
 
 func daemonMode() {
 	binary, err := exec.LookPath(os.Args[0])
@@ -58,7 +38,7 @@ func daemonMode() {
 	os.Exit(0)
 }
 
-func initStorageDriver(config Conf) {
+func initStorageDriver(config conf.Conf) {
 	switch config.StorageDriverName {
 	case "sqlite3":
 		sqliteDB := config.StorageDrivers["sqlite"].DBName
@@ -94,7 +74,7 @@ func initStorageDriver(config Conf) {
 	}
 }
 
-func startHTTPServer(ctx context.Context, config Conf, handler http.Handler) {
+func startHTTPServer(ctx context.Context, config conf.Conf, handler http.Handler) {
 	defer func() {
 		log.Debug("http server stopped")
 	}()
@@ -138,10 +118,7 @@ func main() {
 	flag.Parse()
 
 	// 解析配置文件
-	var config Conf
-	if _, err := toml.DecodeFile(configFilePath, &config); err != nil {
-		panic(fmt.Sprintf("parse configration file failed: %v", err))
-	}
+	config := conf.ParseConf(configFilePath)
 
 	// 守护进程模式
 	if config.Daemon && os.Getppid() != 1 {

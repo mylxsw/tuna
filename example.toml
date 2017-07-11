@@ -1,15 +1,18 @@
 
 # 存储方案
-storage_driver="mysql"
+storage_driver="redis"
 # http监听地址
 listen="127.0.0.1:55555"
 # 是否开启守护进程模式
 daemon=false
 
+# 公开服务地址
+public_url="http://example.com"
+
 # 日志输出级别:debug/info/warning/error/fatal/panic
 log_level="debug"
 # 日志输出类型: stdout/file
-log_type="file"
+log_type="stdout"
 # 日志文件，仅当log_type=file时有效
 log_file="/var/log/tuna.log"
 
