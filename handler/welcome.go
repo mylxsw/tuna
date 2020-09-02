@@ -21,5 +21,5 @@ func Welcome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(libs.Failed("操作失败"))
+	w.Write(libs.Failed("operation failed"))
 }

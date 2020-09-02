@@ -38,13 +38,18 @@ func (s *Storage) Set(hash, url string, expire int64) (string, error) {
 		expire = time.Now().Unix() + expire
 	}
 
-	stmt, err := s.db.Prepare("INSERT INTO tuna_urls (hash, url, expire) VALUES(?, ?, ?)")
+	setSQL := "INSERT INTO tuna_urls (url, expire, hash) VALUES(?, ?, ?)"
+	if s.Get(hash) != "" {
+		setSQL = "UPDATE tuna_urls SET url = ?, expire = ? WHERE hash = ?"
+	}
+
+	stmt, err := s.db.Prepare(setSQL)
 	if err != nil {
 		return "", fmt.Errorf("Prepare Error: %v", err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(hash, url, expire)
+	_, err = stmt.Exec(url, expire, hash)
 	if err != nil {
 		return "", fmt.Errorf("Set Failed: %v", err)
 	}
@@ -55,7 +60,7 @@ func (s *Storage) Set(hash, url string, expire int64) (string, error) {
 // Get 方法用于在MySQL中查询hash与url的对应关系
 func (s *Storage) Get(hash string) string {
 	var url string
-	err := s.db.QueryRow("SELECT url FROM tuna_urls WHERE hash=? AND expire >= ? LIMIT 1", hash, time.Now().Unix()).Scan(&url)
+	err := s.db.QueryRow("SELECT url FROM tuna_urls WHERE hash=? AND (expire >= ? OR expire = 0) LIMIT 1", hash, time.Now().Unix()).Scan(&url)
 	switch {
 	case err == sql.ErrNoRows:
 	case err != nil:
@@ -70,7 +75,7 @@ func (s *Storage) Get(hash string) string {
 // Count 获取当前有多少url
 func (s *Storage) Count() int {
 	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM tuna_urls WHERE expire >= ? or expire = 0", time.Now().Unix()).Scan(&count)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM tuna_urls WHERE (expire >= ? or expire = 0)", time.Now().Unix()).Scan(&count)
 	if err != nil {
 		log.Warning("%s", err)
 

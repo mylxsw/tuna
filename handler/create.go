@@ -25,8 +25,8 @@ type respForCreate struct {
 
 // Create 函数用于创建一个hash与url的对应关系
 func Create(w http.ResponseWriter, r *http.Request) {
-	// 默认有效时间为15天
-	var expire int64 = 3600 * 24 * 15
+	// 默认有效时间 0，长期有效
+	var expire int64 = 0
 	var err error
 
 	url := r.PostFormValue("url")
@@ -34,40 +34,46 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	if expireStr != "" {
 		expire, err = strconv.ParseInt(expireStr, 10, 64)
 		if err != nil {
-			libs.SendFormInvalidResponse(w, fmt.Sprintf("expire过期时间不合法: %v", err))
+			libs.SendFormInvalidResponse(w, fmt.Sprintf("expire is invalid: %v", err))
 			return
 		}
 	}
 
 	if !libs.IsValidURL(url) {
-		libs.SendFormInvalidResponse(w, "url地址不合法")
+		libs.SendFormInvalidResponse(w, "url is invalid")
 		return
 	}
 
-	link := ""
-	if driver := storage.Default(); driver != nil {
-		urlHash := genURLHash(url, true)
+	uniq := r.PostFormValue("uniq")
 
+	if driver := storage.Default(); driver != nil {
+		urlHash := genURLHash(url, uniq == "1" || uniq == "true")
 		i := 6
-		link = urlHash[:i]
-		for driver.Get(link) != "" {
-			log.Warningf("hash collision detected [%s] for %s", link, url)
+
+		existedURL := driver.Get(urlHash[:i])
+		for existedURL != "" && existedURL != url {
+			log.Warningf("hash collision detected [%s] for %s", urlHash[:i], url)
 
 			if i >= 32 {
-				log.Warningf("oops, url [%s] has the same hash %s with someothers", url, link)
+				log.Warningf("oops, url [%s] has the same hash %s with someothers", url, urlHash[:i])
 				goto ERR
 			}
 			i++
-			link = urlHash[:i]
+
+			existedURL = driver.Get(urlHash[:i])
 		}
 
-		driver.Set(link, url, expire)
+		if _, err := driver.Set(urlHash[:i], url, expire); err != nil {
+			libs.SendInternalServerErrorResponse(w, fmt.Sprintf("driver set failed: %v", err))
+			log.Errorf("driver set for %s=%s(%d) failed: %v", urlHash[:i], url, expire, err)
+			return
+		}
 
-		log.Debugf("create new link %s for %s expired at %d", link, url, expire)
+		log.Debugf("create new link %s for %s expired at %d", urlHash[:i], url, expire)
 
 		conf := conf.GetConf()
 		w.Write(libs.Success(respForCreate{
-			Link:   fmt.Sprintf("%s/%s", conf.PublicURL, link),
+			Link:   fmt.Sprintf("%s/%s", conf.PublicURL, urlHash[:i]),
 			Expire: expire,
 		}))
 
@@ -75,7 +81,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 ERR:
-	w.Write(libs.Failed("操作失败"))
+	w.Write(libs.Failed("operation failed"))
 }
 
 // 生成URL哈希值

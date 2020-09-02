@@ -160,17 +160,17 @@ func main() {
 	}
 
 	var routeHandlers = []RouteHandler{
-		RouteHandler{
+		{
 			Path:        "/",
 			HandlerFunc: mw.Handler(handler.Welcome, mw.WithHTMLResponse),
 			Methods:     []string{"GET"},
 		},
-		RouteHandler{
+		{
 			Path:        "/",
 			HandlerFunc: mw.Handler(handler.Create, mw.WithJSONResponse),
 			Methods:     []string{"POST"},
 		},
-		RouteHandler{
+		{
 			Path:        "/{hash}",
 			HandlerFunc: mw.Handler(handler.Query, mw.WithHTMLResponse),
 			Methods:     []string{"GET"},

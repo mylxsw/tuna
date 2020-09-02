@@ -14,7 +14,7 @@ func Query(w http.ResponseWriter, r *http.Request) {
 	hash := mux.Vars(r)["hash"]
 
 	if !libs.IsValidHash(hash) {
-		libs.SendFormInvalidResponse(w, "请求地址不合法")
+		libs.SendFormInvalidResponse(w, "hash is invalid")
 		return
 	}
 
@@ -33,5 +33,5 @@ func Query(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(libs.Failed("操作失败"))
+	w.Write(libs.Failed("operation failed"))
 }

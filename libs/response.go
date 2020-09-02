@@ -44,6 +44,7 @@ func SendJSONResponseHeader(w http.ResponseWriter) {
 func Redirect(url string, w http.ResponseWriter) {
 	w.Header().Set("Location", url)
 	w.WriteHeader(http.StatusFound)
+	w.Write([]byte("rediect to " + url))
 }
 
 // SendNotFoundResponse 发送404响应
@@ -57,6 +58,15 @@ func SendFormInvalidResponse(w http.ResponseWriter, message string) {
 	w.WriteHeader(http.StatusUnprocessableEntity)
 	w.Write(createResponse(Response{
 		StatusCode: 422,
+		Message:    message,
+	}))
+}
+
+// SendInternalServerErrorResponse 发送内部服务错误
+func SendInternalServerErrorResponse(w http.ResponseWriter, message string) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write(createResponse(Response{
+		StatusCode: 500,
 		Message:    message,
 	}))
 }
