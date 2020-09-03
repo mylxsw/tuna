@@ -14,7 +14,7 @@ log_level="debug"
 # 日志输出类型: stdout/file
 log_type="stdout"
 # 日志文件，仅当log_type=file时有效
-log_file="/var/log/tuna.log"
+log_file="/var/log/tuna-%s.log"
 
 [storage.redis]
 

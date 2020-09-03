@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mylxsw/asteria/log"
 	"github.com/mylxsw/tuna/storage"
-	log "github.com/sirupsen/logrus"
 )
 
 // Register 注册当前驱动到Storage
@@ -64,7 +64,7 @@ func (s *Storage) Get(hash string) string {
 	switch {
 	case err == sql.ErrNoRows:
 	case err != nil:
-		log.Warning("%s", err)
+		log.Warningf("get hash from mysql: %s", err)
 	default:
 		return url
 	}
@@ -77,7 +77,7 @@ func (s *Storage) Count() int {
 	var count int
 	err := s.db.QueryRow("SELECT COUNT(*) FROM tuna_urls WHERE (expire >= ? or expire = 0)", time.Now().Unix()).Scan(&count)
 	if err != nil {
-		log.Warning("%s", err)
+		log.Warningf("count from mysql: %s", err)
 
 		return 0
 	}
@@ -113,12 +113,12 @@ func initTable(tableCreateSQL, name, dataSourceName string) {
 
 	db, err := sql.Open(name, dataSourceName)
 	if err != nil {
-		log.Fatalf("Create db file failed: %v", err)
+		log.Errorf("create db file failed: %v", err)
 	}
 	defer db.Close()
 
 	_, err = db.Exec(tableCreateSQL)
 	if err != nil {
-		log.Fatalf("Create table failed: %v", err)
+		log.Errorf("create table failed: %v", err)
 	}
 }

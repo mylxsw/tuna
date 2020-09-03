@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mylxsw/asteria/log"
 	"github.com/mylxsw/tuna/libs"
 	"github.com/mylxsw/tuna/storage"
-	log "github.com/sirupsen/logrus"
 )
 
 // Query 方法用于查询hash值与url的对应关系
@@ -33,5 +33,5 @@ func Query(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(libs.Failed("operation failed"))
+	_, _ = w.Write(libs.Failed("operation failed"))
 }

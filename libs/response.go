@@ -50,13 +50,13 @@ func Redirect(url string, w http.ResponseWriter) {
 // SendNotFoundResponse 发送404响应
 func SendNotFoundResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("Not Found!"))
+	_, _ = w.Write([]byte("Not Found!"))
 }
 
 // SendFormInvalidResponse 发送表单不合法响应
 func SendFormInvalidResponse(w http.ResponseWriter, message string) {
 	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(createResponse(Response{
+	_, _ = w.Write(createResponse(Response{
 		StatusCode: 422,
 		Message:    message,
 	}))
@@ -65,7 +65,7 @@ func SendFormInvalidResponse(w http.ResponseWriter, message string) {
 // SendInternalServerErrorResponse 发送内部服务错误
 func SendInternalServerErrorResponse(w http.ResponseWriter, message string) {
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write(createResponse(Response{
+	_, _ = w.Write(createResponse(Response{
 		StatusCode: 500,
 		Message:    message,
 	}))

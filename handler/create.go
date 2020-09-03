@@ -3,17 +3,16 @@ package handler
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
-	"fmt"
-
+	"github.com/mylxsw/asteria/log"
 	"github.com/mylxsw/tuna/conf"
 	"github.com/mylxsw/tuna/libs"
 	"github.com/mylxsw/tuna/storage"
-	log "github.com/sirupsen/logrus"
 )
 
 var r = rand.New(rand.NewSource(9999999))
@@ -47,7 +46,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	uniq := r.PostFormValue("uniq")
 
 	if driver := storage.Default(); driver != nil {
-		urlHash := genURLHash(url, uniq == "1" || uniq == "true")
+		urlHash := createURLHash(url, uniq == "1" || uniq == "true")
 		i := 6
 
 		existedURL := driver.Get(urlHash[:i])
@@ -71,9 +70,8 @@ func Create(w http.ResponseWriter, r *http.Request) {
 
 		log.Debugf("create new link %s for %s expired at %d", urlHash[:i], url, expire)
 
-		conf := conf.GetConf()
-		w.Write(libs.Success(respForCreate{
-			Link:   fmt.Sprintf("%s/%s", conf.PublicURL, urlHash[:i]),
+		_, _ = w.Write(libs.Success(respForCreate{
+			Link:   fmt.Sprintf("%s/%s", conf.GetConf().PublicURL, urlHash[:i]),
 			Expire: expire,
 		}))
 
@@ -85,10 +83,10 @@ ERR:
 }
 
 // 生成URL哈希值
-func genURLHash(url string, unique bool) string {
+func createURLHash(url string, unique bool) string {
 	salt := ""
 	if unique {
-		salt = genSalt()
+		salt = randomSalt()
 	}
 
 	digest := md5.New()
@@ -99,6 +97,6 @@ func genURLHash(url string, unique bool) string {
 }
 
 // 生成一个随机值
-func genSalt() string {
+func randomSalt() string {
 	return time.Now().Format("Mon Jan 2 15:04:05 MST 2006") + strconv.Itoa(r.Int())
 }

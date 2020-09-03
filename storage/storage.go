@@ -59,13 +59,13 @@ func Drivers() []string {
 // Open 返回指定的驱动
 func Open(driverName string) (Driver, error) {
 	driversMu.RLock()
-	driveri, ok := drivers[driverName]
+	dr, ok := drivers[driverName]
 	driversMu.RUnlock()
 	if !ok {
 		return nil, fmt.Errorf("storage: unknown driver %q (forgotten import?)", driverName)
 	}
 
-	return driveri, nil
+	return dr, nil
 }
 
 // Default 返回第一个注册的驱动

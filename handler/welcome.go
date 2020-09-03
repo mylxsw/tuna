@@ -14,12 +14,12 @@ type respForWelcome struct {
 // Welcome 用于输出欢迎页面
 func Welcome(w http.ResponseWriter, r *http.Request) {
 	if driver := storage.Default(); driver != nil {
-		w.Write(libs.Success(respForWelcome{
+		_, _ = w.Write(libs.Success(respForWelcome{
 			URLCount: driver.Count(),
 		}))
 
 		return
 	}
 
-	w.Write(libs.Failed("operation failed"))
+	_, _ = w.Write(libs.Failed("operation failed"))
 }

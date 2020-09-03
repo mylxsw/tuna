@@ -7,7 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.2
+	github.com/mylxsw/asteria v0.0.0-20200709071207-26dd334a6e51
 	github.com/onsi/ginkgo v1.14.0 // indirect
-	github.com/sirupsen/logrus v1.6.0
 	gopkg.in/redis.v5 v5.2.9
 )

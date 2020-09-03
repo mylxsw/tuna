@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/mylxsw/tuna/storage"
-	redis "gopkg.in/redis.v5"
+	"gopkg.in/redis.v5"
 )
 
 // Register 注册当前驱动到Storage

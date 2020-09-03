@@ -9,15 +9,18 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/mylxsw/asteria/level"
+	"github.com/mylxsw/asteria/log"
+	"github.com/mylxsw/asteria/writer"
 	"github.com/mylxsw/tuna/conf"
 	"github.com/mylxsw/tuna/handler"
 	mw "github.com/mylxsw/tuna/middleware"
 	dbStorage "github.com/mylxsw/tuna/storage/database"
 	redisStorage "github.com/mylxsw/tuna/storage/redis"
-	log "github.com/sirupsen/logrus"
-	redis "gopkg.in/redis.v5"
+	"gopkg.in/redis.v5"
 )
 
 var configFilePath string
@@ -87,7 +90,7 @@ func startHTTPServer(ctx context.Context, config conf.Conf, handler http.Handler
 	go func() {
 		select {
 		case <-ctx.Done():
-			srv.Shutdown(ctx)
+			_ = srv.Shutdown(ctx)
 		}
 	}()
 
@@ -95,10 +98,6 @@ func startHTTPServer(ctx context.Context, config conf.Conf, handler http.Handler
 	if err := srv.ListenAndServe(); err != nil {
 		panic(err)
 	}
-}
-
-func init() {
-	log.SetLevel(log.DebugLevel)
 }
 
 func main() {
@@ -127,21 +126,13 @@ func main() {
 
 	// 配置日志处理
 	if config.LogLevel != "" {
-		level, err := log.ParseLevel(config.LogLevel)
-		if err != nil {
-			panic(err)
-		}
-
-		log.SetLevel(level)
+		log.All().LogLevel(level.GetLevelByName(config.LogLevel))
 	}
 
 	if config.LogType == "file" && config.LogFile != "" {
-		f, err := os.OpenFile(config.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755)
-		if err != nil {
-			panic(err)
-		}
-
-		log.SetOutput(f)
+		log.All().LogWriter(writer.NewDefaultRotatingFileWriter(func(le level.Level, module string) string {
+			return fmt.Sprintf(config.LogFile, fmt.Sprintf("%s-%s", time.Now().Format("2006-01-02"), le.GetLevelName()))
+		}))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -177,8 +168,8 @@ func main() {
 		},
 	}
 
-	for _, handler := range routeHandlers {
-		r.HandleFunc(handler.Path, handler.HandlerFunc).Methods(handler.Methods...)
+	for _, h := range routeHandlers {
+		r.HandleFunc(h.Path, h.HandlerFunc).Methods(h.Methods...)
 	}
 
 	// 用于获取所有的API
@@ -186,20 +177,20 @@ func main() {
 		results := make(map[string]map[string]map[string]string)
 		results["v1"] = make(map[string]map[string]string)
 
-		for _, handler := range routeHandlers {
-			if _, ok := results["v1"][handler.Path]; !ok {
-				results["v1"][handler.Path] = make(map[string]string)
+		for _, h := range routeHandlers {
+			if _, ok := results["v1"][h.Path]; !ok {
+				results["v1"][h.Path] = make(map[string]string)
 			}
 
-			for _, method := range handler.Methods {
-				results["v1"][handler.Path][method] = ""
+			for _, method := range h.Methods {
+				results["v1"][h.Path][method] = ""
 			}
 		}
 
 		results["v1"]["/probe/routes"] = map[string]string{"GET": ""}
 
 		jsonRes, _ := json.Marshal(results)
-		w.Write(jsonRes)
+		_, _ = w.Write(jsonRes)
 	}, mw.WithJSONResponse)).Methods("GET")
 
 	// 创建 http server
